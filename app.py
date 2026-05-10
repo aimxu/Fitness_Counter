@@ -13,7 +13,7 @@ app.config['OUTPUT_FOLDER'] = 'output'
 app.config['MAX CONTENT LENGTH'] = 100 * 1024 * 1024 # 100MB
 #创建必要的目录
 os.makedirs (app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs (app.config['oUTPUT_FOLDER'], exist_ok=True)
+os.makedirs (app.config['OUTPUT_FOLDER'], exist_ok=True)
 #全局变量
 model = None
 aigym_instance = None
@@ -143,7 +143,7 @@ def process_video_route(task_id):
 
         input_path = os.path.join(app.config['UPLOAD_FOLDER'], input_file)
         output_filename = f"{task_id}_processed.mp4"
-        output_path = os.path.join(app.config['oUTPUT_FOLDER' ], output_filename)
+        output_path = os.path.join(app.config['OUTPUT_FOLDER' ], output_filename)
         #获取pose_type
         pose_type = request.args.get('pose_type', 'pullup')
         #处理视频
@@ -195,7 +195,7 @@ def process_video_route(task_id):
 @app.route('/download/<filename>')
 def download_file(filename):
     """下载处理后的视频"""
-    file_path = os.path.join(app.config['oUTPUT_FOLDER' ], filename)
+    file_path = os.path.join(app.config['OUTPUT_FOLDER' ], filename)
     if os.path.exists(file_path):
         return send_file(file_path, as_attachment=True)
     return jsonify({'error':'文件不存在'}),404
