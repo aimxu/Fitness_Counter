@@ -47,7 +47,7 @@ python demo_camera.py --pose pushup
 python demo_video.py --video test_video.mp4 --pose pullup
 ```
 
-#### 方式2: Web界面模式
+#### 方式2: Web界面模式（有点问题 ，修改中）
 ```bash
 # 启动web服务
 python app.py
