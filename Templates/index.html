@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PiscTrace - 基于YOLO-Pose的健身动作计数系统</title>
+
+    <!-- 引入TailwindCSS和DaisyUI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/full.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        .video-container video,
+        .video-container img {
+            width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f3f3f3;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #3498db;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 导航栏 -->
+    <nav class="navbar bg-base-100 shadow-lg">
+        <div class="navbar-start">
+            <div class="dropdown">
+                <label tabindex="0" class="btn btn-ghost lg:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </label>
+                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                    <li><a href="#camera">实时检测</a></li>
+                    <li><a href="#upload">视频分析</a></li>
+                </ul>
+            </div>
+            <a class="btn btn-ghost normal-case text-xl">
+                <i class="fas fa-dumbbell text-primary mr-2"></i>
+                PiscTrace
+            </a>
+        </div>
+        <div class="navbar-center hidden lg:flex">
+            <ul class="menu menu-horizontal px-1">
+                <li><a href="#camera">实时检测</a></li>
+                <li><a href="#upload">视频分析</a></li>
+            </ul>
+        </div>
+        <div class="navbar-end">
+            <a href="https://blog.csdn.net/weixin_43697107/article/details/149233144" target="_blank" class="btn btn-ghost">
+                <i class="fas fa-book mr-2"></i>查看博客
+            </a>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 标题区域 -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">
+                基于YOLO-Pose的健身动作计数系统
+            </h1>
+            <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+                使用先进的计算机视觉技术，实时检测俯卧撑、引体向上等健身动作，提供精准的动作计数和反馈
+            </p>
+        </div>
+
+        <!-- 功能选择卡片 -->
+        <div class="grid md:grid-cols-2 gap-8 mb-8">
+            <!-- 实时检测卡片 -->
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <i class="fas fa-video text-primary"></i>
+                        实时摄像头检测
+                    </h2>
+                    <p>使用摄像头实时检测健身动作，支持多种运动模型</p>
+                    <div class="card-actions justify-end">
+                        <button class="btn btn-primary" onclick="showCameraSection()">
+                            开始检测
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 视频分析卡片 -->
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <i class="fas fa-upload text-secondary"></i>
+                        视频文件分析
+                    </h2>
+                    <p>上传本地视频文件，分析其中的健身动作</p>
+                    <div class="card-actions justify-end">
+                        <button class="btn btn-secondary" onclick="showUploadSection()">
+                            上传视频
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 实时检测区域 -->
+        <div id="camera-section" class="hidden">
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <i class="fas fa-camera text-primary"></i>
+                        实时摄像头检测
+                    </h2>
+
+                    <!-- 运动类型选择 -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">选择运动类型</span>
+                        </label>
+                        <select id="pose-type" class="select select-bordered">
+                            <option value="pushup">俯卧撑</option>
+                            <option value="pullup">引体向上</option>
+                            <option value="squat">深蹲</option>
+                            <option value="abworkout">腹肌训练</option>
+                        </select>
+                    </div>
+
+                    <!-- 控制按钮 -->
+                    <div class="flex gap-4">
+                        <button id="start-camera" class="btn btn-success" onclick="startCamera()">
+                            <i class="fas fa-play mr-2"></i>开始检测
+                        </button>
+                        <button id="stop-camera" class="btn btn-error hidden" onclick="stopCamera()">
+                            <i class="fas fa-stop mr-2"></i>停止检测
+                        </button>
+                    </div>
+
+                    <!-- 视频显示区域 -->
+                    <div class="video-container mt-4">
+                        <img id="camera-feed" class="hidden" alt="实时摄像头画面">
+                        <div id="camera-placeholder" class="bg-gray-200 rounded-lg p-8 text-center">
+                            <i class="fas fa-camera text-4xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-600">点击"开始检测"按钮启动摄像头</p>
+                        </div>
+                    </div>
+
+                    <!-- 状态信息 -->
+                    <div id="camera-status" class="hidden alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <span>正在初始化摄像头...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 视频上传区域 -->
+        <div id="upload-section" class="hidden">
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <i class="fas fa-upload text-secondary"></i>
+                        视频文件分析
+                    </h2>
+
+                    <!-- 运动类型选择 -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">选择运动类型</span>
+                        </label>
+                        <select id="upload-pose-type" class="select select-bordered">
+                            <option value="pushup">俯卧撑</option>
+                            <option value="pullup">引体向上</option>
+                            <option value="squat">深蹲</option>
+                            <option value="abworkout">腹肌训练</option>
+                        </select>
+                    </div>
+
+                    <!-- 文件上传 -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">选择视频文件</span>
+                        </label>
+                        <input type="file" id="video-file" class="file-input file-input-bordered w-full" accept="video/*">
+                        <label class="label">
+                            <span class="label-text-alt">支持格式：MP4, AVI, MOV, MKV, WMV（最大100MB）</span>
+                        </label>
+                    </div>
+
+                    <!-- 上传按钮 -->
+                    <button id="upload-btn" class="btn btn-secondary" onclick="uploadVideo()" disabled>
+                        <i class="fas fa-upload mr-2"></i>开始分析
+                    </button>
+
+                    <!-- 进度显示 -->
+                    <div id="upload-progress" class="hidden">
+                        <div class="flex items-center gap-4">
+                            <span>处理进度：</span>
+                            <div class="progress-bar">
+                                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                            </div>
+                            <span id="progress-text">0%</span>
+                        </div>
+                    </div>
+
+                    <!-- 结果下载 -->
+                    <div id="download-section" class="hidden">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            <span>视频处理完成！</span>
+                        </div>
+                        <a id="download-link" href="#" class="btn btn-success">
+                            <i class="fas fa-download mr-2"></i>下载处理后的视频
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer footer-center p-4 bg-base-200 text-base-content">
+        <p>使用 YOLO-Pose 模型进行实时动作检测和计数</p>
+    </footer>
+
+    <script>
+        let cameraActive = false;
+        let uploadInProgress = false;
+
+        // 显示实时检测区域
+        function showCameraSection() {
+            document.getElementById('camera-section').classList.remove('hidden');
+            document.getElementById('upload-section').classList.add('hidden');
+        }
+
+        // 显示视频上传区域
+        function showUploadSection() {
+            document.getElementById('camera-section').classList.add('hidden');
+            document.getElementById('upload-section').classList.remove('hidden');
+        }
+
+        // 启动摄像头
+        async function startCamera() {
+            const poseType = document.getElementById('pose-type').value;
+            const startBtn = document.getElementById('start-camera');
+            const stopBtn = document.getElementById('stop-camera');
+            const placeholder = document.getElementById('camera-placeholder');
+            const feed = document.getElementById('camera-feed');
+            const status = document.getElementById('camera-status');
+
+            try {
+                startBtn.classList.add('loading');
+                status.classList.remove('hidden');
+                status.querySelector('span').textContent = '正在启动摄像头...';
+
+                const response = await fetch('/start_camera', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ pose_type: poseType })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    cameraActive = true;
+                    startBtn.classList.add('hidden');
+                    stopBtn.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                    feed.classList.remove('hidden');
+                    status.classList.add('hidden');
+                } else {
+                    throw new Error(data.error || '启动失败');
+                }
+            } catch (error) {
+                status.classList.remove('hidden');
+                status.classList.add('alert-error');
+                status.querySelector('span').textContent = '错误：' + error.message;
+                startBtn.classList.remove('loading');
+            }
+        }
+
+        // 停止摄像头
+        async function stopCamera() {
+            const startBtn = document.getElementById('start-camera');
+            const stopBtn = document.getElementById('stop-camera');
+            const placeholder = document.getElementById('camera-placeholder');
+            const feed = document.getElementById('camera-feed');
+            const status = document.getElementById('camera-status');
+
+            try {
+                await fetch('/stop_camera', { method: 'POST' });
+
+                cameraActive = false;
+                startBtn.classList.remove('hidden');
+                stopBtn.classList.add('hidden');
+                feed.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                status.classList.add('hidden');
+            } catch (error) {
+                status.classList.remove('hidden');
+                status.classList.add('alert-error');
+                status.querySelector('span').textContent = '停止摄像头失败：' + error.message;
+            } finally {
+                startBtn.classList.remove('loading');
+            }
+        }
+
+        // 文件选择监听
+        document.getElementById('video-file').addEventListener('change', function() {
+            const uploadBtn = document.getElementById('upload-btn');
+            uploadBtn.disabled = !this.files.length;
+        });
+
+        // 上传视频
+        async function uploadVideo() {
+            const fileInput = document.getElementById('video-file');
+            const poseType = document.getElementById('upload-pose-type').value;
+            const uploadBtn = document.getElementById('upload-btn');
+            const progressSection = document.getElementById('upload-progress');
+            const downloadSection = document.getElementById('download-section');
+
+            if (!fileInput.files.length) {
+                alert('请先选择视频文件');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('video_file', file);
+            formData.append('pose_type', poseType);
+
+            try {
+                uploadBtn.classList.add('loading');
+                uploadBtn.disabled = true;
+                progressSection.classList.remove('hidden');
+                downloadSection.classList.add('hidden');
+
+                // 上传文件
+                const uploadResponse = await fetch('/upload_video', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const uploadData = await uploadResponse.json();
+
+                if (uploadData.success) {
+                    // 处理视频
+                    const processResponse = await fetch('/process_video', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ task_id: uploadData.task_id, pose_type: poseType })
+                    });
+
+                    const processData = await processResponse.json();
+
+                    if (processData.success) {
+                        progressSection.classList.add('hidden');
+                        downloadSection.classList.remove('hidden');
+                        document.getElementById('download-link').href = processData.download_url;
+                    } else {
+                        throw new Error(processData.error || '处理失败');
+                    }
+                } else {
+                    throw new Error(uploadData.error || '上传失败');
+                }
+            } catch (error) {
+                alert('错误：' + error.message);
+            } finally {
+                uploadBtn.classList.remove('loading');
+                uploadBtn.disabled = false;
+            }
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查系统状态
+            fetch('/system_status')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('系统状态:', data);
+                })
+                .catch(error => {
+                    console.error('无法获取系统状态:', error);
+                });
+        });
+    </script>
+</body>
+</html>
